@@ -491,13 +491,13 @@ Vector3 Cross(const Vector3& v1, const Vector3& v2) {
 }
 
 
-void DrawPlane(const Plane& plane, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+void DrawPlane(const Plane& plane, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix) {
 	Vector3 center = MultiplyPlane(plane.distance, plane.normal);
 	Vector3 perpendiculars[4];
 	perpendiculars[0] = Normalize(Perpendicular(plane.normal));
-	perpendiculars[1] = { perpendiculars[0].x,-perpendiculars[0].y,-perpendiculars[0].z };
+	perpendiculars[1] = { -perpendiculars[0].x,-perpendiculars[0].y,-perpendiculars[0].z };
 	perpendiculars[2] = Cross(plane.normal,perpendiculars[0]);
-	perpendiculars[3] = { perpendiculars[2] .x,-perpendiculars[2] .y,-perpendiculars[2] .z};
+	perpendiculars[3] = { -perpendiculars[2] .x,-perpendiculars[2] .y,-perpendiculars[2] .z};
 
 	Vector3 points[4];
 	for (int32_t index = 0; index < 4; ++index) {
@@ -506,20 +506,21 @@ void DrawPlane(const Plane& plane, const Matrix4x4& viewProjectionMatrix, const 
 		points[index] = Transform(Transform(point, viewProjectionMatrix), viewportMatrix);
 	}
 
-	Novice::DrawLine((int)points[0].x, (int)points[0].y, (int)points[1].x, (int)points[1].y, color);
-	Novice::DrawLine((int)points[1].x, (int)points[1].y, (int)points[2].x, (int)points[3].y, color);
-	Novice::DrawLine((int)points[2].x, (int)points[2].y, (int)points[3].x, (int)points[2].y, color);
-	Novice::DrawLine((int)points[3].x, (int)points[3].y, (int)points[0].x, (int)points[0].y, color);
+	Novice::DrawLine((int)points[0].x, (int)points[0].y, (int)points[2].x, (int)points[2].y, WHITE);
+	Novice::DrawLine((int)points[0].x, (int)points[0].y, (int)points[3].x, (int)points[3].y, WHITE);
+	Novice::DrawLine((int)points[1].x, (int)points[1].y, (int)points[2].x, (int)points[2].y, WHITE);
+	Novice::DrawLine((int)points[1].x, (int)points[1].y, (int)points[3].x, (int)points[3].y, WHITE);
 }
 
 
-bool IsCollision(const Sphere& s1, const Sphere& s2) {
-	float distanceX = (s2.center.x - s1.center.x) * (s2.center.x - s1.center.x);
-	float distanceY = (s2.center.y - s1.center.y) * (s2.center.y - s1.center.y);
-	float distanceZ = (s2.center.z - s1.center.z) * (s2.center.z - s1.center.z);
+bool IsCollision(const Sphere& s1, const Plane& p2) {
+	float distanceX = (p2.normal.x + s1.center.x);
+	float distanceY = (p2.normal.y + s1.center.y);
+	float distanceZ = (p2.normal.z + s1.center.z);
 
+	float d = p2.distance * p2.normal.x + p2.distance * p2.normal.y + p2.distance * p2.normal.z;
 
-	if (distanceX + distanceY + distanceZ <= s1.radius + s2.radius) {
+	if (distanceX + distanceY + distanceZ <= d) {
 		return true;
 	}
 	return false;
@@ -571,7 +572,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		DrawGrid(WorldViewProjectionMatrix, viewportMatrix);
 
 
-		bool distanceFlag = IsCollision(sphere, sphere);
+		bool distanceFlag = IsCollision(sphere, plane);
 
 		if (distanceFlag == true) {
 			Color = RED;
@@ -581,7 +582,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 		DrawSphere(sphere, WorldViewProjectionMatrix, viewportMatrix, Color);
-		DrawPlane(plane, WorldViewProjectionMatrix, viewportMatrix,Color);
+		DrawPlane(plane, WorldViewProjectionMatrix, viewportMatrix);
+
+
 
 		ImGui::Begin("window");
 		ImGui::DragFloat3("CameraTranslate", &cameraTranslate.x, 0.01f);
@@ -592,7 +595,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
 		plane.normal = Normalize(plane.normal);
-
+		ImGui::DragFloat("Plane.Normal", &plane.distance , 0.01f);
 
 
 		ImGui::End();
